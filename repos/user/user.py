@@ -28,28 +28,6 @@ async def user_from_email(email: str, db: Session) -> User | None:
     return db.exec(query).first()
 
 
-async def add_new_user(user_add: UserAdd, auth: AuthHandler, 
-                       db: Session) -> ResponseModel:
-    # auth_handler = AuthHandler()
-    user_obj = mapper.to(User).map(user_add)
-    existing_user = await user_from_username(user_add.UserName, db)
-    if existing_user:
-        return ResponseModel(status=400, message=MessageEN.username_exists)
-    
-    existing_user = await user_from_email(user_add.Email, db)
-    if existing_user:
-        return ResponseModel(status=400, message=MessageEN.useremail_exists)    
-    
-    user_obj.PasswordHash = auth.hash_password(CoreConfig.DEFAULT_USER_PASSWORD)
-    user_obj.NormalizedUserName = user_obj.UserName.upper()
-    user_obj.NormalizedEmail = user_obj.Email.upper()
-    user_obj.CreatedDate = datetime.datetime.now()
-    user_obj.IsActive = True
-    db.add(user_obj)
-    db.commit()    
-    return ResponseModel(message=MessageEN.user_add_success)
-
-
 async def login(data: UserLogin, 
                 auth: AuthHandler, 
                 db: Session) -> ResponseModel:
@@ -72,14 +50,34 @@ async def login(data: UserLogin,
     token = auth.encode_token(user_details)
     
     # write user details to redis memory with token as key
-    await auth.write_to_redis(token, user_details)
-
-    redis_data = await auth.read_from_redis(token)
-    print(f'redis_data: {redis_data}\n')
+    await auth.write_to_redis(token, user_details)    
 
     # return login data
     user_data = mapper.to(LoginReturn).map(user_obj)
-    user_data.token = token
-    
+    user_data.token = token    
     return ResponseModel(data=jsonable_encoder(user_data), message=MessageEN.login_success)
+
+
+async def add_new_user(user_add: UserAdd, auth: AuthHandler, 
+                       user_id: uuid.UUID,
+                       db: Session) -> ResponseModel:
+    
+    user_obj = mapper.to(User).map(user_add)
+    existing_user = await user_from_username(user_add.UserName, db)
+    if existing_user:
+        return ResponseModel(status=400, message=MessageEN.username_exists)
+    
+    existing_user = await user_from_email(user_add.Email, db)
+    if existing_user:
+        return ResponseModel(status=400, message=MessageEN.useremail_exists)    
+    
+    user_obj.PasswordHash = auth.hash_password(CoreConfig.DEFAULT_USER_PASSWORD)
+    user_obj.NormalizedUserName = user_obj.UserName.upper()
+    user_obj.NormalizedEmail = user_obj.Email.upper()
+    user_obj.CreatedBy = user_id
+    user_obj.CreatedDate = datetime.datetime.now()
+    user_obj.IsActive = True
+    db.add(user_obj)
+    db.commit()    
+    return ResponseModel(message=MessageEN.user_add_success)
     

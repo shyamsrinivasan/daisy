@@ -1,6 +1,7 @@
 import jwt
 import datetime
 import uuid
+import asyncio
 
 from fastapi import HTTPException, status
 from fastapi.params import Depends
@@ -8,7 +9,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2
 from sqlmodel import Session
 
 from passlib.context import CryptContext
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 from core.database import get_db
 from core.config import CoreConfig
@@ -32,36 +33,43 @@ class AuthHandler:
         await RedisUtil.save_to_redis(key, value)
 
     @staticmethod
-    async def read_from_redis(key: str):
-        return await RedisUtil.get_from_redis(key)
+    def read_from_redis(key: str) -> Any:
+        return RedisUtil.get_from_redis(key)
     
-    def encode_token(self, user_info: Dict):
+    def encode_token(self, user_info: Dict) -> str:
         payload = {
             'exp': (datetime.datetime.now(datetime.timezone.utc) + 
                        datetime.timedelta(hours=CoreConfig.ACCESS_TOKEN_EXPIRE_MINUTES)),
             'iat': datetime.datetime.now(datetime.timezone.utc),
-            'user_name': user_info['username'],            
+            'username': user_info['username'],            
             'session_id': user_info['session_id'],
         }
         return jwt.encode(payload, self.secret, algorithm='HS256')
     
-    def decode_token(self, token: str):
+    def decode_token(self, token: str) -> Tuple[Any]:
         try:
-            payload = jwt.decode(token, self.secret, algorithms='HS256')
+            payload = jwt.decode(token, self.secret, algorithms='HS256')            
             return payload['username'] , uuid.UUID(payload['session_id'])
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Expired Signature')
         except jwt.InvalidTokenError:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid Token')
         
-    async def get_current_user(self, auth: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    def current_user(self, auth: HTTPAuthorizationCredentials = Depends(security), 
+                    db: Session = Depends(get_db)) -> Dict[str, Any] | None:
         try:
-            # read user details from redis
-            user_details = await self.read_from_redis(auth.credentials)
+            # read user details from redis                   
+            user_details = self.read_from_redis(auth.credentials)            
+            if not user_details:
+                return None    
             (user_name, session_id) = self.decode_token(auth.credentials)            
+            return {
+                'session_id': session_id,
+                'username': user_name, 
+                'user_id': uuid.UUID(user_details['user_id']),
+            }
         except HTTPException as e:
-            raise e
-        return user_name, user_details['user_id']
+            raise e        
 
 
 def auth_instance():

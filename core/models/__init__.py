@@ -1,12 +1,56 @@
-from sqlmodel import SQLModel, Field, Column
-from typing import Optional
+from datetime import datetime
+import uuid
+from decimal import Decimal
 
-from sqlalchemy import UUID, Index, String, DateTime
+from sqlmodel import SQLModel, Field, Column, Relationship
+from typing import Optional, List
+
+from sqlalchemy import UUID, Index, String, DateTime, ForeignKeyConstraint, DECIMAL
+from sqlalchemy import text
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.dialects.mysql import TINYINT
 
-from datetime import datetime
-import uuid
+
+class Fertilizer(SQLModel, table=True):
+    __table_args__ = (
+        Index('Fertilizers_unique', 'CommonName', unique=True),
+        Index('Fertilizers_unique_1', 'ChemicalName', unique=True)
+    )
+
+    FertilizerId: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, sa_column=Column('FertilizerId', UUID, primary_key=True))
+    CommonName: str = Field(sa_column=mapped_column('CommonName', String(100), nullable=False))
+    ChemicalName: str = Field(sa_column=mapped_column('ChemicalName', String(1000), nullable=False))
+    IsActive: int = Field(sa_column=mapped_column('IsActive', TINYINT(1), nullable=False))
+    CreatedDate: datetime = Field(sa_column=mapped_column('CreatedDate', DateTime, nullable=False))
+    CreatedBy: Optional[uuid.UUID] = Field(default=None, sa_column=mapped_column('CreatedBy', UUID))
+    UpdatedDate: Optional[datetime] = Field(default=None, sa_column=mapped_column('UpdatedDate', DateTime))
+    UpdatedBy: Optional[uuid.UUID] = Field(default=None, sa_column=mapped_column('UpdatedBy', UUID))
+
+    fertilizernutrient: List['Fertilizernutrient'] = Relationship(back_populates='fertilizer')
+    # fertilizerapplication: List['Fertilizerapplication'] = Relationship(back_populates='fertilizer')
+
+
+
+class Fertilizernutrient(SQLModel, table=True):
+    __table_args__ = (
+        ForeignKeyConstraint(['FertilizerId'], ['fertilizer.FertilizerId'], name='fk_fertilizer_nutrient'),
+        Index('fk_fertilizer_nutrient', 'FertilizerId')
+    )
+
+    FertilizerNutrientId: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, sa_column=Column('FertilizerNutrientId', UUID, primary_key=True))
+    IsActive: int = Field(sa_column=mapped_column('IsActive', TINYINT(1), nullable=False))
+    CreatedDate: datetime = Field(sa_column=mapped_column('CreatedDate', DateTime, nullable=False))
+    FertilizerId: Optional[uuid.UUID] = Field(default=None, sa_column=mapped_column('FertilizerId', UUID))
+    NitrogenPercent: Optional[Decimal] = Field(default=None, sa_column=mapped_column('NitrogenPercent', DECIMAL(18, 2)))
+    PhosphorousPercent: Optional[Decimal] = Field(default=None, sa_column=mapped_column('PhosphorousPercent', DECIMAL(18, 2)))
+    PotassiumPercent: Optional[Decimal] = Field(default=None, sa_column=mapped_column('PotassiumPercent', DECIMAL(18, 2)))
+    SulphurPercent: Optional[Decimal] = Field(default=None, sa_column=mapped_column('SulphurPercent', DECIMAL(18, 2), server_default=text('0.00')))
+    OtherNutrients: Optional[str] = Field(default=None, sa_column=mapped_column('OtherNutrients', String(1000)))
+    CreatedBy: Optional[uuid.UUID] = Field(default=None, sa_column=mapped_column('CreatedBy', UUID))
+    UpdatedDate: Optional[datetime] = Field(default=None, sa_column=mapped_column('UpdatedDate', DateTime))
+    UpdatedBy: Optional[uuid.UUID] = Field(default=None, sa_column=mapped_column('UpdatedBy', UUID))
+
+    fertilizer: Optional['Fertilizer'] = Relationship(back_populates='fertilizernutrient')
 
 
 class User(SQLModel, table=True):

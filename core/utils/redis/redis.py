@@ -18,9 +18,10 @@ class RedisUtil:
     async def save_to_redis(cls, key: str, value: Any) -> None:
         if not isinstance(value, str):
             value = json.dumps(value)
-        cls.client.set(key, value, ex=CoreConfig.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expiry = CoreConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        cls.client.set(key, value, ex=expiry)
 
     @classmethod
-    async def get_from_redis(cls, key: str) -> Any:
+    def get_from_redis(cls, key: str) -> Any:
         value = cls.client.get(key)
-        return json.loads(value)
+        return json.loads(value) if value else None
