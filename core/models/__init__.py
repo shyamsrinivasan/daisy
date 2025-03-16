@@ -11,14 +11,13 @@ import uuid
 
 class User(SQLModel, table=True):
     __table_args__ = (
-        Index('User_unique', 'UserName', unique=True),
-        Index('User_unique_1', 'FirstName', unique=True),
+        Index('User_unique', 'UserName', unique=True),        
         Index('User_unique_2', 'NormalizedUserName', unique=True),
         Index('User_unique_3', 'Email', unique=True),
         Index('User_unique_4', 'NormalizedEmail', unique=True)
     )
 
-    UserId: Optional[uuid.UUID] = Field(default=None, sa_column=Column('UserId', UUID, primary_key=True))
+    UserId: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, sa_column=Column('UserId', UUID, primary_key=True))
     UserName: str = Field(sa_column=mapped_column('UserName', String(12), nullable=False))
     NormalizedUserName: str = Field(sa_column=mapped_column('NormalizedUserName', String(12), nullable=False))
     Email: str = Field(sa_column=mapped_column('Email', String(1000), nullable=False))
