@@ -1,7 +1,8 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-import logging
+from fastapi_versioning import VersionedFastAPI
 
 # from core.config import CoreConfig
 
@@ -26,5 +27,7 @@ app.add_middleware(CORSMiddleware,
                    allow_headers=["*"],
                    )
 
+app = VersionedFastAPI(app, version_format='{major}', 
+                       prefix_format='/v{major}')
 
 

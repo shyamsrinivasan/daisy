@@ -1,0 +1,14 @@
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+from contextvars import ContextVar
+
+
+request_object: ContextVar[Request] = ContextVar('request')
+
+
+class PaginationMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        request_object.set(request)
+        return await call_next(request)
+

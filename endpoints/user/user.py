@@ -5,6 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 from typing import Dict
 
+from fastapi_versioning import version
+
 from core.auth import AuthHandler, auth_instance
 from schemas.core.responses import ResponseModel, UnAuthorized, response_dict
 
@@ -22,6 +24,7 @@ auth = AuthHandler()
 
 @router.post('/login', tags=['login'], description='User login', 
             response_model=ResponseModel)
+@version(1)
 async def user_login(user: UserLogin, db: Session = Depends(get_db), 
                     auth: AuthHandler = Depends(auth_instance)):
     response = await login(user, auth, db)
@@ -30,6 +33,7 @@ async def user_login(user: UserLogin, db: Session = Depends(get_db),
 
 @router.post('/add', tags=['add'], description='Add new user', 
             responses=response_dict)
+@version(1)
 async def add_user(user_add: UserAdd, db: Session = Depends(get_db), 
                    auth: AuthHandler = Depends(auth_instance),
                    user: Dict = Depends(auth.current_user)):    
